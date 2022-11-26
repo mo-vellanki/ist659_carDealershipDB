@@ -45,6 +45,8 @@ GO
 DROP TABLE IF EXISTS score_provider_lookup
 GO
 DROP TABLE IF EXISTS users_score_lookup
+GO
+DROP TABLE IF EXISTS users_preference
 PRINT('Dropped existing tables')
 
 -- Drop the database if it already exists
@@ -170,5 +172,14 @@ CREATE TABLE users_score_lookup(
     ,CONSTRAINT [PK_users_score_id] PRIMARY KEY (users_score_id)
     ,CONSTRAINT [FK_users_score_user_id] FOREIGN KEY (users_score_user_id) REFERENCES users(user_id)
     ,CONSTRAINT [FK_users_score_provider_id] FOREIGN KEY (users_score_provider_id) REFERENCES score_provider_lookup(provider_id)
+)
+-- Create user_preferences
+GO -- Create the table
+CREATE TABLE users_preference(
+    [preference_user_id] TINYINT NOT NULL
+    ,[preference_max_price] SMALLMONEY NOT NULL
+    .[preference_color] NVARCHAR(20) NOT NULL
+    ,[preference_fueltype] CHAR(3) NOT NULL -- GAS,EL,HY
+    ,[preference_transmission] CHAR(1) -- A,M Automatic, Manual
 )
 PRINT('.....Tables created')
