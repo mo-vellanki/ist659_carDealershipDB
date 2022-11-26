@@ -30,7 +30,11 @@ PRINT('Dropped existing constraints')
 
 -- Drop the tables if they already exist
 GO
-DROP TABLE IF EXISTS cartype_lookup
+DROP TABLE IF EXISTS cartypes_lookup
+GO
+DROP TABLE IF EXISTS car_conditions_lookup
+GO
+DROP TABLE IF EXISTS car_transmissions_lookup
 GO
 DROP TABLE IF EXISTS cars
 GO
@@ -47,6 +51,8 @@ GO
 DROP TABLE IF EXISTS users_score_lookup
 GO
 DROP TABLE IF EXISTS users_preference
+GO
+DROP TABLE IF EXISTS car_ratings
 PRINT('Dropped existing tables')
 
 -- Drop the database if it already exists
@@ -72,14 +78,30 @@ PRINT('Creating Tables.....')
 GO
 -- Create the cartype_lookup table used in cars table
 USE carDealership;
-CREATE TABLE cartype_lookup (
-    [cartype_type] NVARCHAR(10) PRIMARY KEY
+CREATE TABLE cartypes_lookup ( -- Wagon, Sedan, SUV, Hatchback
+    [cartype_type] NVARCHAR(10) NOT NULL
+    ,CONSTRAINT [PK_cartypes_lookup_type] PRIMARY KEY (cartype_type)
+)
+
+GO
+-- Create the car_conditions_lookup table used in cars table
+CREATE TABLE car_conditions_lookup (
+    [car_conditions_value] TINYINT NOT NULL IDENTITY(1,1) -- 1- Bad, 2 - Good, 3 - average, 4 -good, 5 - v good
+    ,[car_conditions_condition] NVARCHAR(10) NOT NULL
+    ,CONSTRAINT [PK_car_conditions_lookup_value] PRIMARY KEY (car_conditions_value)
+    ,CONSTRAINT [CC_car_conditions_car_condition_value] CHECK (car_conditions_value >=1 AND car_conditions_value <=5)
+)
+
+GO
+-- Create the car_transmissions_lookup table used in cars table
+CREATE TABLE car_transmissions_lookup (
+    [car_transmission_type] CHAR(1) NOT NULL
+    ,CONSTRAINT [PK_car_transmissions_lookup_type] PRIMARY KEY (car_transmission_type)
 )
 
 -- Create the cars table that contains information about cars available at the dealership
 GO
-CREATE TABLE cars
-(
+CREATE TABLE cars(
      [car_id] TINYINT NOT NULL IDENTITY(100,1)
     ,[car_name] NVARCHAR(50) NOT NULL
     ,[car_type] NVARCHAR(10) NOT NULL
@@ -89,7 +111,7 @@ CREATE TABLE cars
     ,[car_buyer_user_id] TINYINT NOT NULL
     ,[car_amount_sold] SMALLMONEY NOT NULL -- Assuming we're only dealing cars that cost <214,748
     ,CONSTRAINT PK_cars_car_id PRIMARY KEY (car_id)
-    ,CONSTRAINT FK_cars_car_type FOREIGN KEY (car_type) REFERENCES cartype_lookup(cartype_type)
+    ,CONSTRAINT FK_cars_car_type FOREIGN KEY (car_type) REFERENCES cartypes_lookup(cartype_type)
     ,CONSTRAINT CC_cars_seller_isnot_buyer CHECK (car_seller_user_id != car_buyer_user_id)
 )
 
@@ -107,12 +129,14 @@ CREATE TABLE cars_information(
     ,[cars_info_car_condition] TINYINT NOT NULL
     ,CONSTRAINT [PK_cars_info_car_id] PRIMARY KEY (cars_info_car_id)
     ,CONSTRAINT [FK_cars_info_car_id] FOREIGN KEY (cars_info_car_id) REFERENCES cars(car_id)
+    ,CONSTRAINT [FK_cars_car_condition] FOREIGN KEY (cars_info_car_condition) REFERENCES car_conditions_lookup(car_conditions_value)
+    ,CONSTRAINT [FK_cars_car_transmission] FOREIGN KEY (cars_info_car_transmission) REFERENCES car_transmissions_lookup(car_transmission_type)
+ -- There won't be frequent additions to the type of transmission. A CC would suffice instead of a lookup table
     ,CONSTRAINT [CC_cars_info_car_transmission_lookup] CHECK (cars_info_car_transmission = 'A' OR cars_info_car_transmission = 'M')
     ,CONSTRAINT [CC_cars_info_car_yearOfManf_range] CHECK (cars_info_car_yearOfManf >= 1992 AND cars_info_car_yearOfManf <= 2022)
     ,CONSTRAINT [CC_cars_info_car_fueltype_lookup] CHECK (cars_info_car_fueltype = 'GAS' OR cars_info_car_fueltype = 'ELE' OR cars_info_car_fueltype ='HYB')
     ,CONSTRAINT [CC_cars_info_car_mileage_000_range] CHECK (cars_info_car_mileage_000 > 0 )
     ,CONSTRAINT [CC_cars_info_car_noof_prev_owners] CHECK (cars_info_car_noof_prev_owners > 1)
-    ,CONSTRAINT [CC_cars_info_car_condition_range] CHECK (cars_info_car_condition >=0 AND cars_info_car_condition <=5 )
 
 )
 
@@ -178,8 +202,21 @@ GO -- Create the table
 CREATE TABLE users_preference(
     [preference_user_id] TINYINT NOT NULL
     ,[preference_max_price] SMALLMONEY NOT NULL
-    .[preference_color] NVARCHAR(20) NOT NULL
+    ,[preference_color] NVARCHAR(20) NOT NULL
     ,[preference_fueltype] CHAR(3) NOT NULL -- GAS,EL,HY
     ,[preference_transmission] CHAR(1) -- A,M Automatic, Manual
+    ,CONSTRAINT [PK_preference_user_id] PRIMARY KEY (preference_user_id)
+    ,CONSTRAINT [FK_preference_user_id] FOREIGN KEY (preference_user_id) REFERENCES users(user_id)
 )
+-- Create car_ratings
+GO -- Create the table
+CREATE TABLE car_ratings(
+    [rating_id] TINYINT NOT NULL
+    ,[rating_for_car_id] TINYINT NOT NULL
+    ,[rating_value] TINYINT NOT NULL
+    ,[rating_comments] NVARCHAR NOT NULL
+    ,CONSTRAINT [PK_CAR_RATINGS_RATING_ID] PRIMARY KEY (rating_id)
+    ,CONSTRAINT [FK_CAR_RATINGS_FOR_CAR_ID] FOREIGN KEY (rating_for_car_id) REFERENCES cars(car_id)
+)
+
 PRINT('.....Tables created')
