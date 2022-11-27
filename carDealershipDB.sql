@@ -76,8 +76,29 @@ PRINT('Database created')
 
 PRINT('Creating Tables.....')
 GO
--- Create the cartype_lookup table used in cars table
 USE carDealership;
+
+-- Create the users table that contains information about users of the dealership
+CREATE TABLE users(
+     [user_id] TINYINT NOT NULL IDENTITY(1,1)
+    ,[user_email] NVARCHAR(75) NOT NULL
+    ,[user_firstname] NVARCHAR(20) NOT NULL
+    ,[user_lastname] NVARCHAR(30) NOT NULL
+    ,[user_address_street] NVARCHAR(50) NOT NULL
+    ,[user_address_city] NVARCHAR(20) NOT NULL
+    ,[user_address_state] CHAR(2) NOT NULL
+    ,[user_phonenumber_areacode] SMALLINT NOT NULL -- Takes 6bytes to store a split phone number rather than 8bytes for storing it as a single number
+    ,[user_phonenumber_telephone] INT NOT NULL
+    ,[user_credit_score] SMALLINT NOT NULL
+    ,CONSTRAINT [PK_users_user_id] PRIMARY KEY (user_id)
+    ,CONSTRAINT [UC_users_user_email] UNIQUE (user_email)
+    ,CONSTRAINT [CC_user_credit_score_range] CHECK (user_credit_score >=300 AND user_credit_score<=850)
+)
+
+
+
+GO
+-- Create the cartype_lookup table used in cars table
 CREATE TABLE cartypes_lookup ( -- Wagon, Sedan, SUV, Hatchback
     [cartype_type] NVARCHAR(10) NOT NULL
     ,CONSTRAINT [PK_cartypes_lookup_type] PRIMARY KEY (cartype_type)
@@ -108,11 +129,14 @@ CREATE TABLE cars(
     ,[car_available] BIT NOT NULL CONSTRAINT DV_cars_car_available DEFAULT 1 -- 0=False, 1=True if car is available or not
     ,[car_asking_price] SMALLMONEY NOT NULL -- Assuming we're only dealing cars that cost <214,748
     ,[car_seller_user_id] TINYINT NOT NULL
-    ,[car_buyer_user_id] TINYINT NOT NULL
-    ,[car_amount_sold] SMALLMONEY NOT NULL -- Assuming we're only dealing cars that cost <214,748
-    ,CONSTRAINT PK_cars_car_id PRIMARY KEY (car_id)
-    ,CONSTRAINT FK_cars_car_type FOREIGN KEY (car_type) REFERENCES cartypes_lookup(cartype_type)
-    ,CONSTRAINT CC_cars_seller_isnot_buyer CHECK (car_seller_user_id != car_buyer_user_id)
+    ,[car_buyer_user_id] TINYINT NULL
+    ,[car_amount_sold] SMALLMONEY NULL -- Assuming we're only dealing cars that cost <214,748
+    ,CONSTRAINT [PK_cars_car_id] PRIMARY KEY (car_id)
+    ,CONSTRAINT [FK_cars_car_type] FOREIGN KEY (car_type) REFERENCES cartypes_lookup(cartype_type)
+    ,CONSTRAINT [FK_cars_car_seller_user_id] FOREIGN KEY (car_seller_user_id) REFERENCES users(user_id)
+    ,CONSTRAINT [FK_cars_car_buyer_user_id] FOREIGN KEY (car_buyer_user_id) REFERENCES users(user_id)
+    ,CONSTRAINT [CC_cars_seller_isnot_buyer] CHECK (car_seller_user_id != car_buyer_user_id)
+-- Create a function to implement this check CONSTRAINT [CC_amount_sold_null_for_avail] CHECK (car_amount_sold is not NULL AND car_available = 0 AND car_buyer_user_id is NULL)
 )
 
 -- Create the cars_information table that contains detailed information about cars available at the dealership
@@ -138,22 +162,6 @@ CREATE TABLE cars_information(
     ,CONSTRAINT [CC_cars_info_car_mileage_000_range] CHECK (cars_info_car_mileage_000 > 0 )
     ,CONSTRAINT [CC_cars_info_car_noof_prev_owners] CHECK (cars_info_car_noof_prev_owners > 1)
 
-)
-
--- Create the users table that contains information about users of the dealership
-GO
-CREATE TABLE users(
-     [user_id] TINYINT NOT NULL IDENTITY(1,1)
-    ,[user_email] NVARCHAR(75) NOT NULL
-    ,[user_firstname] NVARCHAR(50) NOT NULL
-    ,[user_lastname] NVARCHAR(50) NOT NULL
-    ,[user_zipcode] INT NOT NULL
-    ,[user_phonenumber_areacode] SMALLINT NOT NULL -- Takes 6bytes to store a split phone number rather than 8bytes for storing it as a single number
-    ,[user_phonenumber_ telephone] INT NOT NULL
-    ,[user_credit_score] SMALLINT NOT NULL
-    ,CONSTRAINT [PK_users_user_id] PRIMARY KEY (user_id)
-    ,CONSTRAINT [UC_users_user_email] UNIQUE (user_email)
-    -- CHECK CONSTRAINT FOR user_credit_score to be in a particular range (> some value)
 )
 
 -- Create the bid_status_lookup table that contains possible values for bid_status column in the bids table
@@ -220,3 +228,29 @@ CREATE TABLE car_ratings(
 )
 
 PRINT('.....Tables created')
+
+-- Inserting values into tables
+GO
+PRINT('Inserting Data into tables')
+GO
+INSERT INTO cartypes_lookup(cartype_type)
+    VALUES ('Sedan'),('Coupe'),('Hatchback'),('SUV'),('Van')
+GO
+INSERT INTO car_conditions_lookup(car_conditions_condition)
+    VALUES ('Bad'), ('Average'), ('Good'), ('Very Good'), ('Excellent') 
+GO
+INSERT INTO car_transmissions_lookup
+    VALUES ('A'), ('M')
+GO
+INSERT INTO users
+    (user_email, user_firstname, user_lastname, user_address_street, user_address_city
+    , user_address_state,user_phonenumber_areacode, user_phonenumber_telephone, user_credit_score)
+    VALUES
+    ('rocio.walker@hotmail.com', 'Rocio', 'Walker', '46 Sunset St.', 'West Lafayette', 'IN',123,456789,769),
+    ('nikita1@gmail.com', 'Nikita', 'One', '30 Longfellow St.', 'Egg Harbor Township', 'NJ',234,567890,680)
+GO
+INSERT INTO cars(car_name, car_type, car_asking_price, car_seller_user_id)
+    VALUES ('Volvo XC60', 'SUV', 65000,1)
+
+GO
+select * from INFORMATION_SCHEMA.Tables
