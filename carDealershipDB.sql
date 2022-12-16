@@ -115,6 +115,13 @@ PRINT('Creating Tables.....')
 GO
 USE carDealership;
 
+-- Create score_provider_lookup
+GO -- Create the table
+CREATE TABLE score_provider_lookup(
+    [provider_id] TINYINT NOT NULL IDENTITY(1,1)
+    ,[provider_name] NVARCHAR(30) NOT NULL
+    ,CONSTRAINT [PK_score_provider_lookup_provider_id] PRIMARY KEY (provider_id)
+)
 -- Create the users table that contains information about users of the dealership
 CREATE TABLE users(
      [user_id] TINYINT NOT NULL IDENTITY(1,1)
@@ -126,11 +133,26 @@ CREATE TABLE users(
     ,[user_address_state] CHAR(2) NOT NULL
     ,[user_phonenumber_areacode] SMALLINT NOT NULL -- Takes 6bytes to store a split phone number rather than 8bytes for storing it as a single number
     ,[user_phonenumber_telephone] INT NOT NULL
-    ,[user_credit_score_id] SMALLINT NOT NULL
+    -- ,[user_credit_score_id] TINYINT NOT NULL
     ,CONSTRAINT [PK_users_user_id] PRIMARY KEY (user_id)
-    ,CONSTRAINT [FK_users_user_credit_score_id] FOREIGN KEY (user_credit_score_id) REFERENCES users_score_lookup(users_score_user_id)
+    -- ,CONSTRAINT [FK_users_user_credit_score_id] FOREIGN KEY (user_credit_score_id) REFERENCES users_score_lookup(users_score_id)
     ,CONSTRAINT [UC_users_user_email] UNIQUE (user_email)
 )
+
+-- Create users_score_lookup
+GO -- Create the table
+CREATE TABLE users_score_lookup(
+    -- [users_score_id] TINYINT NOT NULL IDENTITY(1,1)
+    [users_score_user_id] TINYINT NOT NULL
+    ,[users_score_credit_score] SMALLINT NOT NULL
+    ,[users_score_provider_id] TINYINT NOT NULL
+    ,CONSTRAINT [PK_users_score_id] PRIMARY KEY (users_score_user_id)
+    ,CONSTRAINT [FK_users_score_user_id] FOREIGN KEY (users_score_user_id) REFERENCES users(user_id)
+    ,CONSTRAINT [FK_users_score_provider_id] FOREIGN KEY (users_score_provider_id) REFERENCES score_provider_lookup(provider_id)
+    ,CONSTRAINT [CC_user_credit_score_range] CHECK (users_score_credit_score >=300 AND users_score_credit_score<=850)
+
+)
+
 
 GO
 -- Create the cartype_lookup table used in cars table
@@ -224,26 +246,6 @@ CREATE TABLE bids(
     ,CONSTRAINT [FK_bids_bid_status] FOREIGN KEY (bid_status) REFERENCES bid_status_lookup(bid_status_id)
 )
 
--- Create users_score_lookup
-GO -- Create the table
-CREATE TABLE score_provider_lookup(
-    [provider_id] TINYINT NOT NULL IDENTITY(1,1)
-    ,[provider_name] NVARCHAR(30) NOT NULL
-    ,CONSTRAINT [PK_score_provider_lookup_provider_id] PRIMARY KEY (provider_id)
-)
--- Create users_score_lookup
-GO -- Create the table
-CREATE TABLE users_score_lookup(
-    [users_score_id] TINYINT NOT NULL IDENTITY(1,1)
-    [users_score_user_id] TINYINT NOT NULL
-    ,[users_score_credit_score] SMALLINT NOT NULL
-    ,[users_score_provider_id] TINYINT NOT NULL
-    ,CONSTRAINT [PK_users_score_id] PRIMARY KEY (users_score_id)
-    ,CONSTRAINT [FK_users_score_user_id] FOREIGN KEY (users_score_user_id) REFERENCES users(user_id)
-    ,CONSTRAINT [FK_users_score_provider_id] FOREIGN KEY (users_score_provider_id) REFERENCES score_provider_lookup(provider_id)
-    ,CONSTRAINT [CC_user_credit_score_range] CHECK (users_score_credit_score >=300 AND users_score_credit_score<=850)
-
-)
 -- Create user_preferences
 GO -- Create the table
 CREATE TABLE users_preference(
@@ -271,15 +273,26 @@ PRINT('.....Tables created')
 -- Inserting values into tables
 GO
 PRINT('Inserting Data into tables')
+
+GO
+INSERT INTO score_provider_lookup(provider_name) values ('Equifax'),('TransUnion'),('Experian')
+
 GO
 INSERT INTO users
     (user_email, user_firstname, user_lastname, user_address_street, user_address_city
-    , user_address_state,user_phonenumber_areacode, user_phonenumber_telephone, user_credit_score_id)
+    , user_address_state,user_phonenumber_areacode, user_phonenumber_telephone)
     VALUES
-    ('roy.walker@hotmail.com', 'Roy', 'Walker', '45 Sunset St.', 'East Lafayette', 'IN',134,456745,1)
-    ,('nate@gmail.com', 'Nate', 'Turner', '50 Longfellow St.', 'Harbor Township', 'NJ',235,567890,680)
-    ,('joy.alan@hotmail.com', 'Joy', 'Alan', '50 Sunset St.', 'East Lafayette', 'IN',134,496745,756)
-    ,('grace.smith@hotmail.com', 'Grace', 'Smith', '67 Sunset St.', 'East Lafayette', 'IN',134,458945,766)
+    ('roy.walker@hotmail.com', 'Roy', 'Walker', '45 Sunset St.', 'East Lafayette', 'IN',134,456745)
+    ,('nate@gmail.com', 'Nate', 'Turner', '50 Longfellow St.', 'Harbor Township', 'NJ',235,567890)
+    ,('joy.alan@hotmail.com', 'Joy', 'Alan', '50 Sunset St.', 'East Lafayette', 'IN',134,496745)
+    ,('grace.smith@hotmail.com', 'Grace', 'Smith', '67 Sunset St.', 'East Lafayette', 'IN',134,458945)
+
+GO
+INSERT INTO users_score_lookup(users_score_user_id,users_score_credit_score,users_score_provider_id)
+    VALUES (1, 600, 2)
+            ,(2, 800, 1)
+            ,(3, 740, 3)
+            ,(4, 690, 2)
 
 GO
 INSERT INTO cartypes_lookup(cartype_type)
@@ -330,15 +343,6 @@ INSERT INTO bids (bid_user_id,bid_car_id,bid_amount,bid_status)
             ,(3,102,70000,0)
             ,(4,104,80000,1)
 GO
-INSERT INTO score_provider_lookup(provider_name) values ('Equifax'),('TransUnion'),('Experian')
-GO
-INSERT INTO users_score_lookup(users_score_user_id,users_score_credit_score,users_score_provider_id)
-    VALUES (1, 600, 2)
-            ,(2, 800, 1)
-            ,(3, 740, 3)
-            ,(4, 690, 2)
-
-GO
 INSERT INTO users_preference(preference_user_id,preference_max_price,preference_color,preference_fueltype,preference_transmission)
     VALUES (3,28000,'Green','HYB','A')
             ,(1,18000,'Red','HYB','A')
@@ -347,11 +351,11 @@ INSERT INTO users_preference(preference_user_id,preference_max_price,preference_
             --,(5,28000,'Blue','HYB','A')
 
 GO
-INSERT INTO car_ratings(rating_id,rating_for_car_id,rating_value,rating_comments)
-    VALUES (1,100,4,'Mint condition')
-            ,(2,102,2,'Needs some fixes')
-            ,(3,103,3,'Runs fine with random noises')
-            ,(4,107,5,'excellent')
+INSERT INTO car_ratings(rating_for_car_id,rating_value,rating_comments)
+    VALUES (100,4,'Mint condition')
+            ,(102,2,'Needs some fixes')
+            ,(103,3,'Runs fine with random noises')
+            ,(107,5,'excellent')
 
 GO
 PRINT('.....Data inserted')
