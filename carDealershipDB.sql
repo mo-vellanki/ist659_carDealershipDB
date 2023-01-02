@@ -263,7 +263,7 @@ CREATE TABLE car_ratings(
     [rating_id] TINYINT NOT NULL IDENTITY(1,1)
     ,[rating_for_car_id] TINYINT NOT NULL
     ,[rating_value] TINYINT NOT NULL
-    ,[rating_comments] NVARCHAR NOT NULL
+    ,[rating_comments] NVARCHAR(50) NOT NULL
     ,CONSTRAINT [PK_CAR_RATINGS_RATING_ID] PRIMARY KEY (rating_id)
     ,CONSTRAINT [FK_CAR_RATINGS_FOR_CAR_ID] FOREIGN KEY (rating_for_car_id) REFERENCES cars(car_id)
 )
@@ -317,7 +317,7 @@ INSERT INTO cars(car_name, car_type, car_asking_price, car_seller_user_id)
 INSERT INTO cars(car_name, car_type, car_asking_price, car_seller_user_id)
     VALUES ('Volvo XC60', 'SUV', 65000,1)
 INSERT INTO cars(car_name, car_type, car_asking_price, car_seller_user_id)
-    VALUES ('Honda Sienna', 'Van', 65000,1)
+    VALUES ('Honda Sienna', 'Van', 65000,1)
 GO
 INSERT INTO cars_information
     (cars_info_car_id,cars_info_car_description,cars_info_car_transmission,cars_info_car_colour,
@@ -334,7 +334,7 @@ INSERT INTO cars_information
     -- ,(108,' sustainable materials characterize every detail','A','Blue',2020,'ELE',3,2,2)
     -- ,(109,'Contemporary design','A','Black',2020,'GAS',31,3,4)
 GO
-INSERT INTO bid_status_lookup VALUES (0, 'NOK') ,(1, 'OK')-- , (4,'OK')
+INSERT INTO bid_status_lookup VALUES (0, 'NOK') ,(1, 'OK')-- , (4,'OK')
 
 GO
 INSERT INTO bids (bid_user_id,bid_car_id,bid_amount,bid_status)
@@ -355,7 +355,31 @@ INSERT INTO car_ratings(rating_for_car_id,rating_value,rating_comments)
     VALUES (100,4,'Mint condition')
             ,(102,2,'Needs some fixes')
             ,(103,3,'Runs fine with random noises')
-            ,(107,5,'excellent')
+            ,(106,5,'excellent')
 
 GO
 PRINT('.....Data inserted')
+
+PRINT('.... Views')
+Go 
+CREATE View v_cars_based_on_user_preference AS
+   SELECT * FROM users_preference
+     JOIN users ON users_preference.preference_user_id =  users.user_id 
+
+GO
+CREATE View v_cars_info AS
+    SELECT * FROM cars
+        JOIN cars_information ON cars_information.cars_info_car_id = cars.car_id
+
+GO
+CREATE View v_cars_credit_pre AS
+    SELECT * FROM users_preference
+        JOIN users ON users.user_id = users_preference.preference_user_id
+
+GO
+CREATE VIEW v_bids_part_car AS
+    SELECT bid_id,bid_car_id,bid_amount,bid_status,
+        CASE WHEN bid_status = 0 THEN 'Not OK' 
+             WHEN bid_status = 1 THEN 'OK'
+END AS bid_status_text FROM  bids
+    JOIN cars ON car_id = bid_car_id 
